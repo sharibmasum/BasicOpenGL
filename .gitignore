@@ -1,0 +1,91 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+Debug/
+Release/
+x64/
+x86/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Environment files and secrets
+.env
+.env.*
+*.env
+config.ini
+*.config
+secrets.json
+credentials.json
+*.pem
+*.key
+*.cert
+
+# Log files
+*.log
+logs/
+log/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Dependencies
+deps/
+vendor/
+packages/
+
+# Coverage and test files
+coverage/
+.coverage
+htmlcov/
+.tox/
+.pytest_cache/ 
