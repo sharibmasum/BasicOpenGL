@@ -1,3 +1,5 @@
+#define STB_IMAGE_IMPLEMENTATION
+
 #include <iostream>
 #include <cstdio>
 #include <stdlib.h>
@@ -9,227 +11,128 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <GLFW/glfw3.h>
-#include "../include/Mesh.h"
+
+#include "Window.h"
+#include "Mesh.h"
+#include "Shader.h"
+#include "Camera.h"
+#include "Texture.h"
+#include "Light.h"
+
 
 std::vector<Mesh*> meshList;
+std::vector<Shader> shaderList;
+Window mainWindow;
+Camera camera;
+
+GLfloat deltaTime = 0.0f;
+GLfloat lastTime = 0.0f;
+
+Texture brickTexture;
+Texture dirtTexture;
+
+Light mainLight;
 
 
-const GLint WIDTH = 800, HEIGHT = 600;
-GLuint VAO, VBO, IBO, shader, uniformModel, uniformProjection;
-
-bool direction = true;
 float triOffset = 0.0f;
-float triMaxOffset = 0.7f;
-float triIncrement = 0.01f;
 
-const float toRadians = 3.14159265f / 108.0f;
+GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformAmbientIntensity = 0, uniformAmbientColour = 0;
 
-bool sizeDirection = true;
-float curlSize = 0.4f;
-float curAngle = 0.0f;
-float maxSize = 0.8f;
-float minSize = 0.1f;
+static const char* vShader = "Shaders/vertexShader.glsl";
+static const char* fShader = "Shaders/fragmentShader.glsl";
 
-// vertex shader
-static const char* vShader = " #version 330 core\n"
-                             "layout (location = 0) in vec3 aPos;\n"
-                             "uniform mat4 model; \n"
-                             "uniform mat4 projection; \n"
-                             "out vec4 vCol; \n"
-                             "\n"
-                             "void main() {\n"
-                             "gl_Position = projection * model * vec4(aPos, 1.0); \n"
-                             "vCol = vec4(clamp(aPos, 0.0f, 1.0f), 1.0f);\n"
-                             "}";
-
-static const char* fShader = "#version 330 core\n"
-                             "out vec4 FragColor;\n"
-                             "in vec4 vCol; \n"
-                             "\n"
-                             "\n"
-                             "void main () {\n"
-                             "FragColor = vCol; \n"
-                             "}";
-
-void createTriangle () {
+void createObjects () {
     GLfloat vertices [] = {
-            -1.0f, -1.0f, 0.0f,
-            0.0f, -1.0f, 1.0f,
-            1.0f, -1.0f, 0.0f,
-            0.0f, 1.0f, 0.0f
+
+            -1.0f, -1.0f, 0.0f,     0.0f, 0.0f,
+            0.0f, -1.0f, 1.0f,        0.5f, 0.0f,
+            1.0f, -1.0f, 0.0f,     1.0f, 0.0f,
+            0.0f, 1.0f, 0.0f,       0.5f, 1.0f,
     };
 
     unsigned int indices [] = {
             0, 3, 1,
-            1,3,2,
-            2,3,0,
-            0,1,2
+            1, 3, 2,
+            2, 3, 0,
+            0, 1, 2
     };
 
 
     Mesh *obj1 = new Mesh(); // creating new mesh object
-    obj1->createMesh(vertices, indices, 4, 12);  // 4 vertices, 12 indices
+    obj1->createMesh(vertices, indices, 20, 12);  // 4 vertices, 12 indices
 
     meshList.push_back(obj1); // adding the object into the vector???
-
-    Mesh *obj2 = new Mesh(); // creating new mesh object
-    obj2->createMesh(vertices, indices, 4, 12);  // 4 vertices, 12 indices
-
-    Mesh *obj3 = new Mesh(); // creating new mesh object
-    obj3->createMesh(vertices, indices, 4, 12);  // 4 vertices, 12 indices
-
-    meshList.push_back(obj2); // adding the object into the vector???
-    meshList.push_back(obj3); // adding the object into the vector???
 }
 
-
-void addShader(GLuint theProgram, const char* shaderCode, GLenum shaderType) {
-    GLuint theShader = glCreateShader(shaderType);
-    const GLchar* theCode[1];
-    theCode[0] = shaderCode;
-
-    GLint codeLength[1];
-    codeLength[0] = strlen(shaderCode);
-
-    glShaderSource(theShader, 1, theCode, codeLength);
-    glCompileShader(theShader);
-
-    GLint result = 0;
-    GLchar eLog[1024] = {0};
-    glGetShaderiv(theShader, GL_COMPILE_STATUS, &result);
-    if(!result) {
-        glGetShaderInfoLog(theShader, sizeof(eLog), NULL, eLog);
-        printf("Error shader program \n", eLog);
-        return;
-    }
-
-    glAttachShader(theProgram, theShader);
+void createShader(){
+    Shader *shader1 = new Shader();
+    shader1->createFromFiles(vShader, fShader); //i dont know waht the arrow is for.
+    shaderList.push_back(*shader1);
 }
-
-void compileShaders () {
-    shader = glCreateProgram();
-
-    if (!shader) {
-        printf("error shader");
-        return;
-    }
-    addShader(shader, vShader, GL_VERTEX_SHADER);
-    addShader(shader, fShader, GL_FRAGMENT_SHADER);
-
-    GLint result = 0;
-    GLchar eLog[1024] = {0};
-
-    glLinkProgram(shader);
-    glGetProgramiv(shader, GL_LINK_STATUS, &result);
-    if(!result) {
-        glGetProgramInfoLog(shader, sizeof(eLog), NULL, eLog);
-        printf("Error linking shader program \n", eLog);
-        return;
-    }
-
-    uniformProjection = glGetUniformLocation(shader, "projection");
-    uniformModel = glGetUniformLocation(shader, "model");
-}
-
 
 int main() {
-    if (!glfwInit()) {
-        printf("GLFW installation failed");
-        glfwTerminate();
-        return 1;
 
-    }
-
-    //window
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // no backwards compatability
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // allows forward compatability
-
-    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "Learning OpenGL", NULL, NULL);
-    if (!window) {
-        printf("failed to create window");
-        glfwTerminate();
-        return 1;
-    }
-
-    // getting buffer size information
-    int bufferWidth, bufferHeight;
-    glfwGetFramebufferSize(window, &bufferWidth, &bufferHeight);
-    glfwMakeContextCurrent(window); // set context for glew to use
-
-    if (!gladLoadGL(glfwGetProcAddress)) {
-        printf("Failed to initialize GLAD\n");
-        return -1;
-    }
-
+    mainWindow = Window();
+    mainWindow.initalize();
     glEnable(GL_DEPTH_TEST);
 
-    glViewport(0,0, bufferWidth, bufferHeight);
 
-    createTriangle();
-    compileShaders();
+    createObjects();
+    createShader();
 
-    glm::mat4 projection = glm::perspective(45.0f, (GLfloat)bufferWidth/(GLfloat)bufferHeight, 0.1f, 100.f);
+    camera = Camera(glm::vec3(0.0f,0.0f,3.0f), glm::vec3(0.0f,1.0f,0.0f),-90.0f,0.0f,5.0f,0.05f);
 
-    while (!glfwWindowShouldClose(window)) {
+    brickTexture = Texture("Textures/brick.png");
+    brickTexture.loadTexture();
+    dirtTexture = Texture("Textures/dirt.png");
+    dirtTexture.loadTexture();
+
+    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f);
+
+    glm::mat4 projection = glm::perspective(45.0f, (GLfloat)mainWindow.getBufferWidth()/(GLfloat)mainWindow.getBufferHeight(), 0.1f, 100.f);
+
+    while (!mainWindow.getShouldClose()) {
+        GLfloat now = glfwGetTime();
+        deltaTime = now - lastTime;
+        lastTime = now;
+
         glfwPollEvents(); // get + handle user input events
 
-        if (direction) {
-            triOffset += triIncrement;
-        } else {
-            triOffset -= triIncrement;
-        }
-
-        if (abs(triOffset) >= triMaxOffset) {
-            direction = !direction;
-        }
-
-        if (sizeDirection) {
-            curlSize += 0.001f;
-        } else {
-            curlSize -= 0.001f;
-        }
-
-        if (curlSize >= maxSize || curlSize <= minSize) {
-            sizeDirection = !sizeDirection;
-        }
-
-        curAngle += 0.1f;
-        if (curAngle >= 360.0f) curAngle -= 360.0f;
+        camera.keyControl(mainWindow.getsKeys(), deltaTime);
+        camera.mouseControl(mainWindow.getXChange(), mainWindow.getYChange());
 
 
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // clear the window and set the color to red.
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glUseProgram(shader);
+
+        shaderList[0].useShader();
+
+        uniformModel = shaderList[0].getModelLocation();
+        uniformProjection = shaderList[0].getProjectionLocation();
+        uniformView = shaderList[0].getViewLocation();
+        uniformAmbientIntensity = shaderList[0].getAmbientIntensityLocation();
+        uniformAmbientColour = shaderList[0].getAmbientColourLocation();
+
+        mainLight.useLight(uniformAmbientIntensity, uniformAmbientColour);
+
+        if (uniformAmbientColour == -1 || uniformAmbientIntensity == -1) {
+            std::cout << "Error: One or more light uniforms not found!" << std::endl;
+        }
 
         glm::mat4 model (1.0f);
 
-        model = glm::translate(model, glm::vec3(0.0f, triOffset, -2.5f));
-        //model = glm::rotate(model, curAngle * toRadians, glm::vec3(0.0f, 1.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.5f));
         model = glm::scale(model, glm::vec3(0.4, 0.4, 1.0f));
 
         glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.calculateViewMatrix()));
+        brickTexture.useTexture();
         meshList[0]->renderMesh();
 
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(1.0f, -triOffset, -2.5f));
-        model = glm::scale(model, glm::vec3(0.4, 0.4, 1.0f));
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-        meshList[1]->renderMesh();
-
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-1.0f, -triOffset, -2.5f));
-        model = glm::scale(model, glm::vec3(0.4, 0.4, 1.0f));
-        glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
-        meshList[2]->renderMesh();
-
-
         glUseProgram(0);
+        mainWindow.swapBuffers();
 
-
-        glfwSwapBuffers(window);
     }
 
     return 0;

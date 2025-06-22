@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/glad)
+include_directories(${CMAKE_SOURCE_DIR}/Shaders)
+include_directories(${CMAKE_SOURCE_DIR}/stb)
 include_directories(/opt/homebrew/include)
 
 
@@ -15,6 +17,14 @@ set(SOURCES
         src/Mesh.cpp
         src/Shader.cpp
         glad/gl.c
+        src/Window.cpp
+        include/Window.h
+        src/Camera.cpp
+        include/Camera.h
+        src/Texture.cpp
+        include/Texture.h
+        src/Light.cpp
+        include/Light.h
 )
 
 # Executable target
