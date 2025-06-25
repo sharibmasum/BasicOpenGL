@@ -68,7 +68,8 @@ void Shader::compileShader(const char *vertexCode, const char *fragmentCode) {
     glGetProgramiv(shaderID, GL_LINK_STATUS, &result);
     if(!result) {
         glGetProgramInfoLog(shaderID, sizeof(eLog), NULL, eLog);
-        printf("Error linking shader program \n", eLog);
+        printf("Error linking shader program: %s\n", eLog);
+
         return;
     }
 
@@ -77,6 +78,8 @@ void Shader::compileShader(const char *vertexCode, const char *fragmentCode) {
     uniformView = glGetUniformLocation(shaderID, "view");
     uniformAmbientColour = glGetUniformLocation(shaderID, "directLight.colour");
     uniformAmbientIntensity = glGetUniformLocation(shaderID, "directLight.ambientIntensity");
+    uniformDiffuseIntensity = glGetUniformLocation(shaderID, "directLight.diffuseIntensity");
+    uniformDirection = glGetUniformLocation(shaderID, "directLight.direction");
 
 }
 
@@ -93,6 +96,14 @@ GLuint Shader::getAmbientIntensityLocation() {
     return uniformAmbientIntensity;
 }
 
+GLuint Shader::getDiffuseIntensityLocation() {
+    return uniformDiffuseIntensity;
+
+}
+
+GLuint Shader::getDirectionLocation() {
+    return uniformDirection;
+}
 
 void Shader::clearShader() {
     if (shaderID != 0) {

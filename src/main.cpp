@@ -22,6 +22,7 @@
 
 std::vector<Mesh*> meshList;
 std::vector<Shader> shaderList;
+
 Window mainWindow;
 Camera camera;
 
@@ -36,18 +37,62 @@ Light mainLight;
 
 float triOffset = 0.0f;
 
-GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformAmbientIntensity = 0, uniformAmbientColour = 0;
+GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformAmbientIntensity = 0, uniformAmbientColour = 0, uniformDirection = 0, uniformDiffuseIntensity = 0;
 
 static const char* vShader = "Shaders/vertexShader.glsl";
 static const char* fShader = "Shaders/fragmentShader.glsl";
 
+
+void calcAverageNormals (unsigned int *indices, unsigned int indiceCount, GLfloat *vertices, unsigned int verticiesCount, unsigned int vLength, unsigned int normalOffset) {
+    for (size_t i=0; i<indiceCount; i+=3) {
+        unsigned int in0 = indices[i] * vLength;
+        unsigned int in1 = indices[i+1] * vLength;
+        unsigned int in2 = indices[i+2] * vLength;
+
+        glm::vec3 p0(vertices[in0], vertices[in0 + 1], vertices[in0 + 2]);
+        glm::vec3 p1(vertices[in1], vertices[in1 + 1], vertices[in1 + 2]);
+        glm::vec3 p2(vertices[in2], vertices[in2 + 1], vertices[in2 + 2]);
+
+        glm::vec3 v1 = p1 - p0;
+        glm::vec3 v2 = p2 - p0;
+
+        glm::vec3 normal = glm::normalize(glm::cross(v1,v2));
+
+        in0 += normalOffset;
+        in1 += normalOffset;
+        in2 += normalOffset;
+
+        vertices[in0] += normal.x;
+        vertices[in0 + 1] += normal.y;
+        vertices[in0 + 2] += normal.z;
+
+        vertices[in1] += normal.x;
+        vertices[in1 + 1] += normal.y;
+        vertices[in1 + 2] += normal.z;
+
+        vertices[in2] += normal.x;
+        vertices[in2 + 1] += normal.y;
+        vertices[in2 + 2] += normal.z;
+
+    }
+
+
+    for (size_t i=0; i<verticiesCount/vLength; i++){
+        unsigned int nOffset = i * vLength + normalOffset;
+        glm::vec3 vec(vertices[nOffset], vertices[nOffset +1], vertices[nOffset+2]);
+        vec = glm::normalize(vec);
+        vertices[nOffset] = vec.x; vertices[nOffset +1] = vec.y; vertices[nOffset+2] = vec.z;
+
+    }
+}
+
 void createObjects () {
     GLfloat vertices [] = {
-
-            -1.0f, -1.0f, 0.0f,     0.0f, 0.0f,
-            0.0f, -1.0f, 1.0f,        0.5f, 0.0f,
-            1.0f, -1.0f, 0.0f,     1.0f, 0.0f,
-            0.0f, 1.0f, 0.0f,       0.5f, 1.0f,
+                // mesh coords                      texture coords                 normals
+            -1.0f, -1.0f, 0.0f,     0.0f, 0.0f,           0.0f, 0.0f, 0.0f,
+            0.0f, -1.0f, 1.0f,        0.5f, 0.0f,      0.0f, 0.0f, 0.0f,
+            1.0f, -1.0f, 0.0f,     1.0f, 0.0f,       0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f,       0.5f, 1.0f,      0.0f, 0.0f, 0.0f
     };
 
     unsigned int indices [] = {
@@ -58,8 +103,9 @@ void createObjects () {
     };
 
 
+    calcAverageNormals(indices, 12, vertices, 32, 8, 5);
     Mesh *obj1 = new Mesh(); // creating new mesh object
-    obj1->createMesh(vertices, indices, 20, 12);  // 4 vertices, 12 indices
+    obj1->createMesh(vertices, indices, 32, 12);  // 4 vertices, 12 indices
 
     meshList.push_back(obj1); // adding the object into the vector???
 }
@@ -87,7 +133,7 @@ int main() {
     dirtTexture = Texture("Textures/dirt.png");
     dirtTexture.loadTexture();
 
-    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f);
+    mainLight = Light(1.0f, 1.0f, 1.0f, 0.2f, 2.0f, -1.0f, -2.0f, 1.0f);
 
     glm::mat4 projection = glm::perspective(45.0f, (GLfloat)mainWindow.getBufferWidth()/(GLfloat)mainWindow.getBufferHeight(), 0.1f, 100.f);
 
@@ -112,8 +158,10 @@ int main() {
         uniformView = shaderList[0].getViewLocation();
         uniformAmbientIntensity = shaderList[0].getAmbientIntensityLocation();
         uniformAmbientColour = shaderList[0].getAmbientColourLocation();
+        uniformDirection = shaderList[0].getDirectionLocation();
+        uniformDiffuseIntensity = shaderList[0].getDiffuseIntensityLocation();
 
-        mainLight.useLight(uniformAmbientIntensity, uniformAmbientColour);
+        mainLight.useLight(uniformAmbientIntensity, uniformAmbientColour, uniformDiffuseIntensity, uniformDirection);
 
         if (uniformAmbientColour == -1 || uniformAmbientIntensity == -1) {
             std::cout << "Error: One or more light uniforms not found!" << std::endl;
